@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FileStorageService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Smart Water Complaint System</a> &gt; <a href="index.source.html" class="el_package">com.swcms.service</a> &gt; <span class="el_source">FileStorageService.java</span></div><h1>FileStorageService.java</h1><pre class="source lang-java linenums">
+package com.swcms.service;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Set;
+import java.util.UUID;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
+
+@Service
+<span class="fc" id="L19">public class FileStorageService {</span>
+
+    @Value(&quot;${app.upload.dir}&quot;)
+    private String uploadDirectory;
+
+    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+<span class="fc" id="L26">    private static final Set&lt;String&gt; ALLOWED_EXTENSIONS =</span>
+<span class="fc" id="L27">            Set.of(&quot;.jpg&quot;, &quot;.jpeg&quot;, &quot;.png&quot;, &quot;.webp&quot;);</span>
+
+<span class="fc" id="L29">    private static final Set&lt;String&gt; ALLOWED_CONTENT_TYPES =</span>
+<span class="fc" id="L30">            Set.of(&quot;image/jpeg&quot;, &quot;image/png&quot;, &quot;image/webp&quot;);</span>
+
+    // Store uploaded image
+    public String storeFile(MultipartFile file, String folder) {
+
+<span class="pc bpc" id="L35" title="2 of 4 branches missed.">        if (file == null || file.isEmpty()) {</span>
+<span class="nc" id="L36">            throw new IllegalArgumentException(&quot;Please select an image&quot;);</span>
+        }
+
+<span class="pc bpc" id="L39" title="1 of 2 branches missed.">        if (file.getSize() &gt; MAX_FILE_SIZE) {</span>
+<span class="nc" id="L40">            throw new IllegalArgumentException(</span>
+<span class="nc" id="L41">                    &quot;Image size must not exceed 5 MB&quot;);</span>
+        }
+
+<span class="fc" id="L44">        String originalFilename =</span>
+<span class="pc bpc" id="L45" title="1 of 2 branches missed.">                StringUtils.cleanPath(file.getOriginalFilename() == null</span>
+<span class="pc" id="L46">                        ? &quot;&quot; : file.getOriginalFilename());</span>
+
+<span class="fc" id="L48">        int extensionIndex = originalFilename.lastIndexOf('.');</span>
+
+<span class="pc bpc" id="L50" title="1 of 2 branches missed.">        if (extensionIndex &lt; 0) {</span>
+<span class="nc" id="L51">            throw new IllegalArgumentException(</span>
+<span class="nc" id="L52">                    &quot;Image must have a valid file extension&quot;);</span>
+        }
+
+<span class="fc" id="L55">        String extension = originalFilename</span>
+<span class="fc" id="L56">                .substring(extensionIndex)</span>
+<span class="fc" id="L57">                .toLowerCase();</span>
+
+<span class="pc bpc" id="L59" title="1 of 2 branches missed.">        if (!ALLOWED_EXTENSIONS.contains(extension)) {</span>
+<span class="nc" id="L60">            throw new IllegalArgumentException(</span>
+<span class="nc" id="L61">                    &quot;Only JPG, JPEG, PNG and WEBP images are allowed&quot;);</span>
+        }
+
+<span class="fc" id="L64">        String contentType = file.getContentType();</span>
+
+<span class="pc bpc" id="L66" title="1 of 2 branches missed.">        if (contentType == null ||</span>
+<span class="pc bpc" id="L67" title="1 of 2 branches missed.">                !ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase())) {</span>
+<span class="nc" id="L68">            throw new IllegalArgumentException(</span>
+<span class="nc" id="L69">                    &quot;Invalid image content type&quot;);</span>
+        }
+
+<span class="pc bpc" id="L72" title="1 of 2 branches missed.">        if (folder == null ||</span>
+<span class="fc" id="L73">                !Set.of(&quot;complaints&quot;, &quot;feedback&quot;, &quot;completion&quot;, &quot;worker-feedback&quot;)</span>
+<span class="pc bpc" id="L74" title="1 of 2 branches missed.">                        .contains(folder)) {</span>
+<span class="nc" id="L75">            throw new IllegalArgumentException(&quot;Invalid upload folder&quot;);</span>
+        }
+
+        try {
+<span class="fc bfc" id="L79" title="All 2 branches covered.">            if (!hasValidImageSignature(file)) {</span>
+<span class="fc" id="L80">                throw new IllegalArgumentException(&quot;Uploaded file content is not a valid JPG, PNG or WEBP image&quot;);</span>
+            }
+<span class="fc" id="L82">            Path rootPath = Paths.get(uploadDirectory)</span>
+<span class="fc" id="L83">                    .toAbsolutePath().normalize();</span>
+
+<span class="fc" id="L85">            Path targetDirectory = rootPath.resolve(folder).normalize();</span>
+
+<span class="pc bpc" id="L87" title="1 of 2 branches missed.">            if (!targetDirectory.startsWith(rootPath)) {</span>
+<span class="nc" id="L88">                throw new IllegalArgumentException(</span>
+<span class="nc" id="L89">                        &quot;Invalid upload directory&quot;);</span>
+            }
+
+<span class="fc" id="L92">            Files.createDirectories(targetDirectory);</span>
+
+<span class="fc" id="L94">            String newFilename = UUID.randomUUID() + extension;</span>
+
+<span class="fc" id="L96">            Path targetPath = targetDirectory</span>
+<span class="fc" id="L97">                    .resolve(newFilename).normalize();</span>
+
+<span class="pc bpc" id="L99" title="1 of 2 branches missed.">            if (!targetPath.startsWith(rootPath)) {</span>
+<span class="nc" id="L100">                throw new IllegalArgumentException(</span>
+<span class="nc" id="L101">                        &quot;Invalid file path&quot;);</span>
+            }
+
+<span class="fc" id="L104">            file.transferTo(targetPath);</span>
+
+<span class="fc" id="L106">            return folder + &quot;/&quot; + newFilename;</span>
+
+<span class="nc" id="L108">        } catch (IOException e) {</span>
+<span class="nc" id="L109">            throw new RuntimeException(</span>
+<span class="nc" id="L110">                    &quot;Could not store uploaded image&quot;, e);</span>
+        }
+    }
+
+    private boolean hasValidImageSignature(MultipartFile file) throws IOException {
+<span class="fc" id="L115">        byte[] bytes = file.getBytes();</span>
+<span class="pc bpc" id="L116" title="1 of 2 branches missed.">        if (bytes.length &lt; 12) return false;</span>
+<span class="pc bpc" id="L117" title="1 of 4 branches missed.">        boolean jpeg = (bytes[0] &amp; 0xff) == 0xff &amp;&amp; (bytes[1] &amp; 0xff) == 0xd8 &amp;&amp;</span>
+<span class="pc bpc" id="L118" title="1 of 2 branches missed.">                (bytes[2] &amp; 0xff) == 0xff;</span>
+<span class="pc bpc" id="L119" title="7 of 8 branches missed.">        boolean png = (bytes[0] &amp; 0xff) == 0x89 &amp;&amp; bytes[1] == 0x50 &amp;&amp; bytes[2] == 0x4e &amp;&amp; bytes[3] == 0x47;</span>
+<span class="pc bpc" id="L120" title="7 of 8 branches missed.">        boolean webp = bytes[0] == 'R' &amp;&amp; bytes[1] == 'I' &amp;&amp; bytes[2] == 'F' &amp;&amp; bytes[3] == 'F' &amp;&amp;</span>
+<span class="nc bnc" id="L121" title="All 8 branches missed.">                bytes[8] == 'W' &amp;&amp; bytes[9] == 'E' &amp;&amp; bytes[10] == 'B' &amp;&amp; bytes[11] == 'P';</span>
+<span class="pc bpc" id="L122" title="2 of 6 branches missed.">        return jpeg || png || webp;</span>
+    }
+
+    // Retrieve stored image safely
+    public Resource loadFile(String relativePath) {
+
+<span class="pc bpc" id="L128" title="2 of 4 branches missed.">        if (relativePath == null || relativePath.isBlank()) {</span>
+<span class="nc" id="L129">            throw new IllegalArgumentException(&quot;Image path is empty&quot;);</span>
+        }
+
+        try {
+<span class="fc" id="L133">            Path rootPath = Paths.get(uploadDirectory)</span>
+<span class="fc" id="L134">                    .toAbsolutePath().normalize();</span>
+
+<span class="fc" id="L136">            Path filePath = rootPath.resolve(relativePath)</span>
+<span class="fc" id="L137">                    .normalize();</span>
+
+<span class="pc bpc" id="L139" title="1 of 2 branches missed.">            if (!filePath.startsWith(rootPath) ||</span>
+<span class="pc bpc" id="L140" title="1 of 2 branches missed.">                    filePath.equals(rootPath)) {</span>
+<span class="nc" id="L141">                throw new IllegalArgumentException(&quot;Invalid image path&quot;);</span>
+            }
+
+<span class="pc bpc" id="L144" title="1 of 2 branches missed.">            if (!Files.isRegularFile(filePath) ||</span>
+<span class="pc bpc" id="L145" title="1 of 2 branches missed.">                    !Files.isReadable(filePath)) {</span>
+<span class="nc" id="L146">                throw new IllegalArgumentException(&quot;Image not found&quot;);</span>
+            }
+
+<span class="fc" id="L149">            Resource resource = new UrlResource(filePath.toUri());</span>
+
+<span class="pc bpc" id="L151" title="2 of 4 branches missed.">            if (!resource.exists() || !resource.isReadable()) {</span>
+<span class="nc" id="L152">                throw new IllegalArgumentException(&quot;Image not found&quot;);</span>
+            }
+
+<span class="fc" id="L155">            return resource;</span>
+
+<span class="nc" id="L157">        } catch (IOException e) {</span>
+<span class="nc" id="L158">            throw new RuntimeException(&quot;Could not load image&quot;, e);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

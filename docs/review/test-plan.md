@@ -14,9 +14,9 @@
 - Negative: invalid status transition is rejected; duplicate citizen and worker feedback are rejected.
 - Boundary: complaint list pagination validates page input and returns the requested page; upload validation tests cover supported and rejected file content.
 
-Run backend tests from the project root:
+Run all backend tests from the project root. On Windows, use the in-process option if Surefire stalls while Mockito attaches its agent:
 
-    mvn test
+    mvn test -DforkCount=0
 
 Run frontend checks from swcms-frontend:
 
@@ -29,7 +29,24 @@ Use workflow-evidence.md to record a real run. Do not mark a step passed based o
 
 ## Coverage and complexity reports
 
-JaCoCo and a Java complexity analyzer are not configured in the current build. Add and run the selected Maven reporting plugins before claiming those reports are complete. Reports should be committed under docs/review/evidence/ only after confirming they contain the current source revision and successful test run.
+JaCoCo is configured to generate a report during Maven verify. Run the end-to-end workflow and non-mocking core tests under the JaCoCo agent:
+
+    mvn verify -Dtest=WorkflowEndToEndTest,ComplaintSearchServiceTest,ComplaintValidatorTest
+
+The HTML report is written to target/site/jacoco/index.html. The current evidence copy and summary are under evidence/backend-coverage and evidence/coverage-summary.md. The verified report includes all 24 backend tests.
+
+A Java complexity analyzer is not configured yet. Select a tool, run it against the reviewed source revision, and retain the output under docs/review/evidence/ before claiming that evidence is complete.
+
+## Browser smoke test
+
+Start the backend in Spring Tools with program argument --spring.profiles.active=local, then run the frontend browser test:
+
+    cd swcms-frontend
+    $env:PLAYWRIGHT_BROWSERS_PATH = '0'
+    npx playwright install chromium
+    npm run test:e2e
+
+This test signs in through the UI as the seeded local administrator and verifies dashboard access. It requires Chromium and the backend on port 8080. The report is written to swcms-frontend/playwright-report/.
 
 ## Defects
 

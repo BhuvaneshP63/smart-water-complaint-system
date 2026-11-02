@@ -1,0 +1,405 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ComplaintService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Smart Water Complaint System</a> &gt; <a href="index.source.html" class="el_package">com.swcms.service</a> &gt; <span class="el_source">ComplaintService.java</span></div><h1>ComplaintService.java</h1><pre class="source lang-java linenums">
+package com.swcms.service;
+
+import java.util.List;
+import java.util.stream.Collectors;
+import java.time.LocalDateTime;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.swcms.dto.ComplaintRequest;
+import com.swcms.dto.ComplaintStatusHistoryResponse;
+import com.swcms.model.Assignment;
+import com.swcms.model.Complaint;
+import com.swcms.model.ComplaintStatusHistory;
+import com.swcms.model.User;
+import com.swcms.repository.AssignmentRepository;
+import com.swcms.repository.ComplaintRepository;
+import com.swcms.repository.ComplaintStatusHistoryRepository;
+import com.swcms.repository.UserRepository;
+
+@Service
+public class ComplaintService {
+
+    private final ComplaintRepository repository;
+    private final UserRepository userRepository;
+    private final AssignmentRepository assignmentRepository;
+    private final ComplaintStatusHistoryRepository historyRepository;
+    private final FileStorageService fileStorageService;
+
+<span class="fc" id="L32">    public ComplaintService(</span>
+            ComplaintRepository repository,
+            UserRepository userRepository,
+            AssignmentRepository assignmentRepository,
+            ComplaintStatusHistoryRepository historyRepository,
+            FileStorageService fileStorageService) {
+
+<span class="fc" id="L39">        this.repository = repository;</span>
+<span class="fc" id="L40">        this.userRepository = userRepository;</span>
+<span class="fc" id="L41">        this.assignmentRepository = assignmentRepository;</span>
+<span class="fc" id="L42">        this.historyRepository = historyRepository;</span>
+<span class="fc" id="L43">        this.fileStorageService = fileStorageService;</span>
+<span class="fc" id="L44">    }</span>
+
+    // Helper: Save complaint status history
+    private void saveStatusHistory(
+            Complaint complaint,
+            String oldStatus,
+            String newStatus,
+            String updatedBy,
+            String remarks) {
+
+<span class="pc bpc" id="L54" title="1 of 4 branches missed.">        if (oldStatus != null &amp;&amp; oldStatus.equals(newStatus)</span>
+<span class="pc bpc" id="L55" title="4 of 6 branches missed.">                &amp;&amp; (remarks == null || (!remarks.startsWith(&quot;Escalated&quot;) &amp;&amp; !remarks.startsWith(&quot;Reassigned&quot;)))) {</span>
+<span class="nc" id="L56">            return;</span>
+        }
+
+<span class="fc" id="L59">        ComplaintStatusHistory history = new ComplaintStatusHistory();</span>
+<span class="fc" id="L60">        history.setComplaint(complaint);</span>
+<span class="fc" id="L61">        history.setOldStatus(oldStatus);</span>
+<span class="fc" id="L62">        history.setNewStatus(newStatus);</span>
+<span class="fc" id="L63">        history.setUpdatedBy(updatedBy);</span>
+<span class="fc" id="L64">        history.setRemarks(remarks);</span>
+
+<span class="fc" id="L66">        historyRepository.save(history);</span>
+<span class="fc" id="L67">    }</span>
+
+    // 1. Add complaint with optional photo
+    @Transactional
+    public Complaint addComplaint(ComplaintRequest request, String email) {
+
+<span class="fc bfc" id="L73" title="All 2 branches covered.">        if (request == null) {</span>
+<span class="fc" id="L74">            throw new IllegalArgumentException(</span>
+<span class="fc" id="L75">                    &quot;Complaint request cannot be null&quot;);</span>
+        }
+
+<span class="fc" id="L78">        User user = userRepository.findByEmail(email)</span>
+<span class="fc" id="L79">                .orElseThrow(() -&gt;</span>
+<span class="nc" id="L80">                        new IllegalArgumentException(&quot;User not found&quot;));</span>
+
+<span class="fc" id="L82">        Complaint complaint = new Complaint();</span>
+<span class="fc" id="L83">        complaint.setCustomerName(request.getCustomerName());</span>
+<span class="fc" id="L84">        complaint.setAddress(request.getAddress());</span>
+<span class="fc" id="L85">        complaint.setComplaintType(request.getComplaintType());</span>
+<span class="fc" id="L86">        complaint.setDescription(request.getDescription());</span>
+<span class="fc" id="L87">        complaint.setPriority(request.getPriority());</span>
+<span class="fc" id="L88">        complaint.setUser(user);</span>
+
+        // Save photo only when the citizen attaches one
+<span class="fc bfc" id="L91" title="All 2 branches covered.">        if (request.getPhoto() != null &amp;&amp;</span>
+<span class="pc bpc" id="L92" title="1 of 2 branches missed.">                !request.getPhoto().isEmpty()) {</span>
+
+<span class="fc" id="L94">            String photoPath = fileStorageService.storeFile(</span>
+<span class="fc" id="L95">                    request.getPhoto(), &quot;complaints&quot;);</span>
+
+<span class="fc" id="L97">            complaint.setPhotoPath(photoPath);</span>
+        }
+
+<span class="fc" id="L100">        Complaint savedComplaint = repository.save(complaint);</span>
+
+        // Record initial status
+<span class="fc" id="L103">        saveStatusHistory(</span>
+<span class="fc" id="L104">                savedComplaint,</span>
+<span class="fc" id="L105">                &quot;Not Created&quot;,</span>
+<span class="fc" id="L106">                savedComplaint.getStatus(),</span>
+<span class="fc" id="L107">                email,</span>
+<span class="fc" id="L108">                &quot;Complaint submitted by citizen&quot;</span>
+        );
+
+<span class="fc" id="L111">        return savedComplaint;</span>
+    }
+
+    // 2. Get all complaints (Admin)
+    public List&lt;Complaint&gt; getAllComplaints() {
+<span class="fc" id="L116">        return repository.findAllByOrderByComplaintIdDesc();</span>
+    }
+
+    public org.springframework.data.domain.Page&lt;Complaint&gt; getAllComplaintsPage(
+            org.springframework.data.domain.Pageable pageable) {
+<span class="fc" id="L121">        return repository.findAll(pageable);</span>
+    }
+
+    // 3. Get complaints by citizen email
+    public List&lt;Complaint&gt; getUserComplaints(String email) {
+<span class="fc" id="L126">        return repository.findByUserEmail(email);</span>
+    }
+
+    // 4. Get complaint by ID
+    public Complaint getComplaintById(int id) {
+<span class="fc" id="L131">        return repository.findById(id).orElse(null);</span>
+    }
+
+    // 5. Get complaint only if it belongs to citizen
+    @Transactional(readOnly = true)
+    public Complaint getUserComplaintById(int id, String email) {
+
+<span class="nc" id="L138">        return repository.findById(id)</span>
+<span class="nc" id="L139">                .filter(complaint -&gt;</span>
+<span class="nc bnc" id="L140" title="All 2 branches missed.">                        complaint.getUser() != null &amp;&amp;</span>
+<span class="nc bnc" id="L141" title="All 2 branches missed.">                        complaint.getUser().getEmail().equals(email))</span>
+<span class="nc" id="L142">                .orElse(null);</span>
+    }
+
+    // 6. Update complaint status (Admin)
+    @Transactional
+    public boolean updateStatus(int id, String status) {
+
+<span class="fc" id="L149">        Complaint complaint = getComplaintById(id);</span>
+
+<span class="pc bpc" id="L151" title="1 of 2 branches missed.">        if (complaint == null) {</span>
+<span class="nc" id="L152">            return false;</span>
+        }
+
+<span class="pc bpc" id="L155" title="1 of 2 branches missed.">        if (status == null ||</span>
+<span class="fc" id="L156">                !List.of(&quot;Pending&quot;, &quot;Assigned&quot;,</span>
+<span class="pc bpc" id="L157" title="1 of 2 branches missed.">                        &quot;In Progress&quot;, &quot;Resolved&quot;).contains(status)) {</span>
+
+<span class="nc" id="L159">            throw new IllegalArgumentException(</span>
+<span class="nc" id="L160">                    &quot;Invalid complaint status&quot;);</span>
+        }
+
+<span class="fc" id="L163">        String oldStatus = complaint.getStatus();</span>
+<span class="fc bfc" id="L164" title="All 2 branches covered.">        if (!isValidTransition(oldStatus, status)) {</span>
+<span class="fc" id="L165">            throw new IllegalArgumentException(&quot;Status cannot change from &quot; + oldStatus + &quot; to &quot; + status);</span>
+        }
+<span class="pc bpc" id="L167" title="3 of 4 branches missed.">        if (&quot;Assigned&quot;.equals(status) &amp;&amp; assignmentRepository.findByComplaintComplaintId(id).isEmpty()) {</span>
+<span class="nc" id="L168">            throw new IllegalArgumentException(&quot;Assign the complaint to a worker before marking it assigned&quot;);</span>
+        }
+<span class="fc" id="L170">        complaint.setStatus(status);</span>
+<span class="fc" id="L171">        repository.save(complaint);</span>
+
+<span class="fc" id="L173">        saveStatusHistory(</span>
+<span class="fc" id="L174">                complaint,</span>
+<span class="fc" id="L175">                oldStatus,</span>
+<span class="fc" id="L176">                status,</span>
+<span class="fc" id="L177">                &quot;ADMIN&quot;,</span>
+<span class="fc" id="L178">                &quot;Status updated by admin&quot;</span>
+        );
+
+<span class="fc" id="L181">        return true;</span>
+    }
+
+    // 7. Update complaint priority (Admin)
+    @Transactional
+    public boolean updatePriority(int id, String priority) {
+
+<span class="nc" id="L188">        Complaint complaint = getComplaintById(id);</span>
+
+<span class="nc bnc" id="L190" title="All 2 branches missed.">        if (complaint == null) {</span>
+<span class="nc" id="L191">            return false;</span>
+        }
+
+<span class="nc bnc" id="L194" title="All 2 branches missed.">        if (priority == null ||</span>
+<span class="nc bnc" id="L195" title="All 2 branches missed.">                !List.of(&quot;Low&quot;, &quot;Medium&quot;, &quot;High&quot;).contains(priority)) {</span>
+
+<span class="nc" id="L197">            throw new IllegalArgumentException(</span>
+<span class="nc" id="L198">                    &quot;Invalid complaint priority&quot;);</span>
+        }
+
+<span class="nc" id="L201">        complaint.setPriority(priority);</span>
+<span class="nc" id="L202">        repository.save(complaint);</span>
+
+<span class="nc" id="L204">        return true;</span>
+    }
+
+    // 8. Delete complaint (Admin)
+    @Transactional
+    public boolean deleteComplaint(int id) {
+
+<span class="pc bpc" id="L211" title="1 of 2 branches missed.">        if (!repository.existsById(id)) {</span>
+<span class="nc" id="L212">            return false;</span>
+        }
+
+<span class="fc" id="L215">        historyRepository.deleteAll(</span>
+<span class="fc" id="L216">                historyRepository</span>
+<span class="fc" id="L217">                        .findByComplaintComplaintIdOrderByUpdatedAtAsc(id)</span>
+        );
+
+<span class="fc" id="L220">        assignmentRepository.deleteByComplaintComplaintId(id);</span>
+<span class="fc" id="L221">        repository.deleteById(id);</span>
+
+<span class="fc" id="L223">        return true;</span>
+    }
+
+    // 9. Assign complaint to Worker (Admin)
+    @Transactional
+    public boolean assignComplaint(int complaintId, String workerEmail) {
+
+<span class="fc" id="L230">        Complaint complaint = getComplaintById(complaintId);</span>
+
+<span class="pc bpc" id="L232" title="1 of 2 branches missed.">        if (complaint == null) {</span>
+<span class="nc" id="L233">            return false;</span>
+        }
+
+<span class="fc" id="L236">        User worker = userRepository.findByEmail(workerEmail)</span>
+<span class="fc" id="L237">                .orElseThrow(() -&gt;</span>
+<span class="nc" id="L238">                        new IllegalArgumentException(&quot;Worker not found&quot;));</span>
+
+<span class="pc bpc" id="L240" title="1 of 2 branches missed.">        if (!&quot;WORKER&quot;.equals(worker.getRole())) {</span>
+<span class="nc" id="L241">            throw new IllegalArgumentException(</span>
+<span class="nc" id="L242">                    &quot;Selected user is not a Worker&quot;);</span>
+        }
+<span class="pc bpc" id="L244" title="1 of 2 branches missed.">        if (!worker.isActive()) throw new IllegalArgumentException(&quot;Selected worker account is inactive&quot;);</span>
+<span class="pc bpc" id="L245" title="1 of 2 branches missed.">        if (List.of(&quot;Resolved&quot;, &quot;Cancelled&quot;, &quot;Rejected&quot;).contains(complaint.getStatus()))</span>
+<span class="nc" id="L246">            throw new IllegalArgumentException(&quot;Closed complaints cannot be assigned&quot;);</span>
+
+<span class="fc" id="L248">        Assignment assignment = assignmentRepository</span>
+<span class="fc" id="L249">                .findByComplaintComplaintId(complaintId)</span>
+<span class="fc" id="L250">                .orElse(new Assignment());</span>
+<span class="pc bpc" id="L251" title="1 of 2 branches missed.">        boolean wasAssigned = assignment.getAssignmentId() != null;</span>
+<span class="pc bpc" id="L252" title="3 of 4 branches missed.">        String previousWorker = wasAssigned &amp;&amp; assignment.getWorker() != null ? assignment.getWorker().getEmail() : null;</span>
+
+<span class="fc" id="L254">        assignment.setComplaint(complaint);</span>
+<span class="fc" id="L255">        assignment.setWorker(worker);</span>
+<span class="fc" id="L256">        assignment.setAssignedAt(LocalDateTime.now());</span>
+<span class="fc" id="L257">        assignmentRepository.save(assignment);</span>
+
+<span class="fc" id="L259">        String oldStatus = complaint.getStatus();</span>
+<span class="fc" id="L260">        complaint.setStatus(&quot;Assigned&quot;);</span>
+<span class="fc" id="L261">        repository.save(complaint);</span>
+
+<span class="fc" id="L263">        saveStatusHistory(</span>
+<span class="fc" id="L264">                complaint,</span>
+<span class="fc" id="L265">                oldStatus,</span>
+<span class="fc" id="L266">                &quot;Assigned&quot;,</span>
+<span class="fc" id="L267">                &quot;ADMIN&quot;,</span>
+<span class="pc bpc" id="L268" title="1 of 2 branches missed.">                wasAssigned ? &quot;Reassigned from &quot; + previousWorker + &quot; to &quot; + workerEmail</span>
+<span class="fc" id="L269">                        : &quot;Complaint assigned to worker: &quot; + workerEmail</span>
+        );
+
+<span class="fc" id="L272">        return true;</span>
+    }
+
+    // 10. Get complaints assigned to Worker
+    @Transactional(readOnly = true)
+    public List&lt;Complaint&gt; getWorkerComplaints(String workerEmail) {
+
+<span class="nc" id="L279">        return assignmentRepository</span>
+<span class="nc" id="L280">                .findAssignmentsByWorkerEmail(workerEmail)</span>
+<span class="nc" id="L281">                .stream()</span>
+<span class="nc" id="L282">                .map(Assignment::getComplaint)</span>
+<span class="nc" id="L283">                .collect(Collectors.toList());</span>
+    }
+
+    // 11. Worker updates assigned complaint status with completion photo
+    @Transactional
+    public boolean updateWorkerComplaintStatus(
+            int complaintId,
+            String status,
+            String workerEmail,
+            MultipartFile completionPhoto,
+            String completionRemarks) {
+
+<span class="pc bpc" id="L295" title="1 of 2 branches missed.">        if (status == null ||</span>
+<span class="pc bpc" id="L296" title="1 of 2 branches missed.">                !List.of(&quot;In Progress&quot;, &quot;Resolved&quot;).contains(status)) {</span>
+
+<span class="nc" id="L298">            throw new IllegalArgumentException(</span>
+<span class="nc" id="L299">                    &quot;Worker can only update status to In Progress or Resolved&quot;);</span>
+        }
+
+<span class="fc" id="L302">        boolean assigned = assignmentRepository</span>
+<span class="fc" id="L303">                .existsByComplaintComplaintIdAndWorkerEmail(</span>
+<span class="fc" id="L304">                        complaintId, workerEmail);</span>
+
+<span class="pc bpc" id="L306" title="1 of 2 branches missed.">        if (!assigned) {</span>
+<span class="nc" id="L307">            return false;</span>
+        }
+
+<span class="fc" id="L310">        Complaint complaint = getComplaintById(complaintId);</span>
+
+<span class="pc bpc" id="L312" title="1 of 2 branches missed.">        if (complaint == null) {</span>
+<span class="nc" id="L313">            return false;</span>
+        }
+
+<span class="pc bpc" id="L316" title="1 of 2 branches missed.">        if (!isValidTransition(complaint.getStatus(), status))</span>
+<span class="nc" id="L317">            throw new IllegalArgumentException(&quot;Status cannot change from &quot; + complaint.getStatus() + &quot; to &quot; + status);</span>
+
+        // Completion photo is compulsory when resolving
+<span class="fc bfc" id="L320" title="All 2 branches covered.">        if (&quot;Resolved&quot;.equals(status)) {</span>
+
+<span class="pc bpc" id="L322" title="1 of 2 branches missed.">            if (completionPhoto == null ||</span>
+<span class="pc bpc" id="L323" title="1 of 2 branches missed.">                    completionPhoto.isEmpty()) {</span>
+
+<span class="nc" id="L325">                throw new IllegalArgumentException(</span>
+<span class="nc" id="L326">                        &quot;Completion photo is required to resolve a complaint&quot;);</span>
+            }
+
+<span class="fc" id="L329">            String photoPath = fileStorageService.storeFile(</span>
+<span class="fc" id="L330">                    completionPhoto, &quot;completion&quot;);</span>
+
+<span class="fc" id="L332">            complaint.setCompletionPhotoPath(photoPath);</span>
+<span class="fc" id="L333">            complaint.setCompletionRemarks(completionRemarks);</span>
+        }
+
+<span class="fc" id="L336">        String oldStatus = complaint.getStatus();</span>
+<span class="fc" id="L337">        complaint.setStatus(status);</span>
+
+<span class="fc" id="L339">        repository.save(complaint);</span>
+
+<span class="fc" id="L341">        saveStatusHistory(</span>
+<span class="fc" id="L342">                complaint,</span>
+<span class="fc" id="L343">                oldStatus,</span>
+<span class="fc" id="L344">                status,</span>
+<span class="fc" id="L345">                workerEmail,</span>
+<span class="fc bfc" id="L346" title="All 2 branches covered.">                &quot;Resolved&quot;.equals(status)</span>
+<span class="fc" id="L347">                        ? &quot;Complaint completed. &quot; +</span>
+<span class="pc bpc" id="L348" title="1 of 2 branches missed.">                          (completionRemarks == null</span>
+<span class="nc" id="L349">                                  ? &quot;&quot;</span>
+<span class="fc" id="L350">                                  : completionRemarks)</span>
+<span class="fc" id="L351">                        : &quot;Status updated by assigned worker&quot;</span>
+        );
+
+<span class="fc" id="L354">        return true;</span>
+    }
+
+    private boolean isValidTransition(String oldStatus, String newStatus) {
+<span class="pc bpc" id="L358" title="2 of 4 branches missed.">        if (oldStatus != null &amp;&amp; oldStatus.equals(newStatus)) return true;</span>
+<span class="pc bpc" id="L359" title="2 of 6 branches missed.">        return switch (oldStatus == null ? &quot;Pending&quot; : oldStatus) {</span>
+<span class="fc" id="L360">            case &quot;Pending&quot; -&gt; List.of(&quot;Assigned&quot;, &quot;Rejected&quot;, &quot;Cancelled&quot;).contains(newStatus);</span>
+<span class="fc" id="L361">            case &quot;Assigned&quot; -&gt; List.of(&quot;In Progress&quot;, &quot;Pending&quot;, &quot;Cancelled&quot;, &quot;Rejected&quot;).contains(newStatus);</span>
+<span class="fc" id="L362">            case &quot;In Progress&quot; -&gt; List.of(&quot;Resolved&quot;, &quot;Assigned&quot;, &quot;Cancelled&quot;, &quot;Rejected&quot;).contains(newStatus);</span>
+<span class="nc" id="L363">            default -&gt; false;</span>
+        };
+    }
+
+    @Transactional
+    public int escalateOverdue() {
+<span class="fc" id="L369">        LocalDateTime cutoff = LocalDateTime.now().minusDays(7);</span>
+<span class="fc" id="L370">        int count = 0;</span>
+<span class="fc bfc" id="L371" title="All 2 branches covered.">        for (Complaint complaint : repository.findAllByOrderByComplaintIdDesc()) {</span>
+<span class="pc bpc" id="L372" title="1 of 4 branches missed.">            if (complaint.getCreatedAt() != null &amp;&amp; complaint.getCreatedAt().isBefore(cutoff)</span>
+<span class="pc bpc" id="L373" title="1 of 2 branches missed.">                    &amp;&amp; !List.of(&quot;Resolved&quot;, &quot;Cancelled&quot;, &quot;Rejected&quot;).contains(complaint.getStatus())</span>
+<span class="pc bpc" id="L374" title="1 of 2 branches missed.">                    &amp;&amp; !&quot;High&quot;.equals(complaint.getPriority())) {</span>
+<span class="fc" id="L375">                complaint.setPriority(&quot;High&quot;);</span>
+<span class="fc" id="L376">                repository.save(complaint);</span>
+<span class="fc" id="L377">                saveStatusHistory(complaint, complaint.getStatus(), complaint.getStatus(), &quot;ADMIN&quot;,</span>
+<span class="fc" id="L378">                        &quot;Escalated automatically: complaint overdue by more than 7 days&quot;);</span>
+<span class="fc" id="L379">                count++;</span>
+            }
+        }
+<span class="fc" id="L382">        return count;</span>
+    }
+
+    // 12. Get complaint status history
+    @Transactional(readOnly = true)
+    public List&lt;ComplaintStatusHistoryResponse&gt; getComplaintHistory(
+            int complaintId) {
+
+<span class="nc" id="L390">        return historyRepository</span>
+<span class="nc" id="L391">                .findByComplaintComplaintIdOrderByUpdatedAtAsc(complaintId)</span>
+<span class="nc" id="L392">                .stream()</span>
+<span class="nc" id="L393">                .map(history -&gt; new ComplaintStatusHistoryResponse(</span>
+<span class="nc" id="L394">                        history.getHistoryId(),</span>
+<span class="nc" id="L395">                        complaintId,</span>
+<span class="nc" id="L396">                        history.getOldStatus(),</span>
+<span class="nc" id="L397">                        history.getNewStatus(),</span>
+<span class="nc" id="L398">                        history.getUpdatedBy(),</span>
+<span class="nc" id="L399">                        history.getRemarks(),</span>
+<span class="nc" id="L400">                        history.getUpdatedAt()</span>
+<span class="nc" id="L401">                ))</span>
+<span class="nc" id="L402">                .collect(Collectors.toList());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

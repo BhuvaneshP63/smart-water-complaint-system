@@ -1,7 +1,7 @@
 Issue Type,Summary,Description,Priority,Status,Assignee,Sprint
 Task,Run three-role browser workflow,"Demonstrate the real Citizen, Worker, and Admin UI workflows and save sanitized evidence.",High,To Do,,
-Task,Generate backend coverage report,"Configure JaCoCo, run the full backend suite, and retain the report for the reviewed revision.",Medium,To Do,,
-Task,Generate Java complexity report,"Select a Java analyzer, run it against the reviewed revision, and retain the output.",Medium,To Do,,
+Task,Generate backend coverage report,"Configure JaCoCo, run the full backend suite, and retain the report for the reviewed revision.",Medium,Done,,
+Task,Generate Java complexity report,"Use the JaCoCo cyclomatic-complexity counters and class/method tables for the reviewed revision.",Medium,Done,,
 Task,Create and record sprint review,"Record actual sprint outcome and retrospective notes; do not backfill historical sprint activity.",High,To Do,,
 Task,Publish GitHub repository,"Create/use the team's repository, set its remote, and continue development with attributable commits.",High,To Do,,
 Task,Review feedback and photo journeys,"Verify citizen, worker, and admin feedback visibility and photo expansion in a browser.",High,To Do,,

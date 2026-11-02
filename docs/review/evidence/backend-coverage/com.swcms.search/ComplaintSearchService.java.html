@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ComplaintSearchService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Smart Water Complaint System</a> &gt; <a href="index.source.html" class="el_package">com.swcms.search</a> &gt; <span class="el_source">ComplaintSearchService.java</span></div><h1>ComplaintSearchService.java</h1><pre class="source lang-java linenums">package com.swcms.search;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.swcms.model.Complaint;
+
+<span class="fc" id="L8">public class ComplaintSearchService {</span>
+
+    public List&lt;Complaint&gt; searchByCustomerName(
+            List&lt;Complaint&gt; complaints, String customerName) {
+
+<span class="fc bfc" id="L13" title="All 2 branches covered.">        if (complaints == null) {</span>
+<span class="fc" id="L14">            throw new IllegalArgumentException(&quot;Complaint list cannot be null&quot;);</span>
+        }
+
+<span class="pc bpc" id="L17" title="1 of 4 branches missed.">        if (customerName == null || customerName.isBlank()) {</span>
+<span class="fc" id="L18">            throw new IllegalArgumentException(&quot;Customer name cannot be empty&quot;);</span>
+        }
+
+<span class="fc" id="L21">        List&lt;Complaint&gt; result = new ArrayList&lt;&gt;();</span>
+
+<span class="fc bfc" id="L23" title="All 2 branches covered.">        for (Complaint complaint : complaints) {</span>
+<span class="fc" id="L24">            if (complaint.getCustomerName()</span>
+<span class="fc bfc" id="L25" title="All 2 branches covered.">                    .equalsIgnoreCase(customerName)) {</span>
+<span class="fc" id="L26">                result.add(complaint);</span>
+            }
+        }
+
+<span class="fc" id="L30">        return result;</span>
+    }
+
+    public List&lt;Complaint&gt; searchByComplaintType(
+            List&lt;Complaint&gt; complaints, String complaintType) {
+
+<span class="pc bpc" id="L36" title="1 of 2 branches missed.">        if (complaints == null) {</span>
+<span class="nc" id="L37">            throw new IllegalArgumentException(&quot;Complaint list cannot be null&quot;);</span>
+        }
+
+<span class="pc bpc" id="L40" title="2 of 4 branches missed.">        if (complaintType == null || complaintType.isBlank()) {</span>
+<span class="nc" id="L41">            throw new IllegalArgumentException(&quot;Complaint type cannot be empty&quot;);</span>
+        }
+
+<span class="fc" id="L44">        List&lt;Complaint&gt; result = new ArrayList&lt;&gt;();</span>
+
+<span class="fc bfc" id="L46" title="All 2 branches covered.">        for (Complaint complaint : complaints) {</span>
+<span class="fc" id="L47">            if (complaint.getComplaintType()</span>
+<span class="fc bfc" id="L48" title="All 2 branches covered.">                    .equalsIgnoreCase(complaintType)) {</span>
+<span class="fc" id="L49">                result.add(complaint);</span>
+            }
+        }
+
+<span class="fc" id="L53">        return result;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

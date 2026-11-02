@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ComplaintStatusHistory.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Smart Water Complaint System</a> &gt; <a href="index.source.html" class="el_package">com.swcms.model</a> &gt; <span class="el_source">ComplaintStatusHistory.java</span></div><h1>ComplaintStatusHistory.java</h1><pre class="source lang-java linenums">
+package com.swcms.model;
+
+import java.time.LocalDateTime;
+
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = &quot;complaint_status_history&quot;, indexes = {
+        @Index(name = &quot;idx_history_complaint_time&quot;, columnList = &quot;complaint_id,updated_at&quot;)
+})
+public class ComplaintStatusHistory {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int historyId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = &quot;complaint_id&quot;, nullable = false)
+    private Complaint complaint;
+
+    @Column(nullable = false)
+    private String oldStatus;
+
+    @Column(nullable = false)
+    private String newStatus;
+
+    private String updatedBy;
+
+    @Column(length = 500)
+    private String remarks;
+
+    @Column(nullable = false)
+    private LocalDateTime updatedAt;
+
+<span class="fc" id="L36">    public ComplaintStatusHistory() {</span>
+<span class="fc" id="L37">    }</span>
+
+    @PrePersist
+    public void setTimestamp() {
+<span class="pc bpc" id="L41" title="1 of 2 branches missed.">        if (updatedAt == null) {</span>
+<span class="fc" id="L42">            updatedAt = LocalDateTime.now();</span>
+        }
+<span class="fc" id="L44">    }</span>
+
+    public int getHistoryId() {
+<span class="fc" id="L47">        return historyId;</span>
+    }
+
+    public Complaint getComplaint() {
+<span class="nc" id="L51">        return complaint;</span>
+    }
+
+    public void setComplaint(Complaint complaint) {
+<span class="fc" id="L55">        this.complaint = complaint;</span>
+<span class="fc" id="L56">    }</span>
+
+    public String getOldStatus() {
+<span class="fc" id="L59">        return oldStatus;</span>
+    }
+
+    public void setOldStatus(String oldStatus) {
+<span class="fc" id="L63">        this.oldStatus = oldStatus;</span>
+<span class="fc" id="L64">    }</span>
+
+    public String getNewStatus() {
+<span class="fc" id="L67">        return newStatus;</span>
+    }
+
+    public void setNewStatus(String newStatus) {
+<span class="fc" id="L71">        this.newStatus = newStatus;</span>
+<span class="fc" id="L72">    }</span>
+
+    public String getUpdatedBy() {
+<span class="fc" id="L75">        return updatedBy;</span>
+    }
+
+    public void setUpdatedBy(String updatedBy) {
+<span class="fc" id="L79">        this.updatedBy = updatedBy;</span>
+<span class="fc" id="L80">    }</span>
+
+    public String getRemarks() {
+<span class="fc" id="L83">        return remarks;</span>
+    }
+
+    public void setRemarks(String remarks) {
+<span class="fc" id="L87">        this.remarks = remarks;</span>
+<span class="fc" id="L88">    }	</span>
+
+    public LocalDateTime getUpdatedAt() {
+<span class="fc" id="L91">        return updatedAt;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

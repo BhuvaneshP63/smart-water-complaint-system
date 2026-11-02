@@ -2,6 +2,8 @@
 /target/
 /swcms-frontend/node_modules/
 /swcms-frontend/dist/
+/swcms-frontend/playwright-report/
+/swcms-frontend/test-results/
 
 # Local databases and uploaded citizen/work proof images
 /data/

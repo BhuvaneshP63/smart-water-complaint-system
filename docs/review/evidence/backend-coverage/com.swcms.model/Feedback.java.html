@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Feedback.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Smart Water Complaint System</a> &gt; <a href="index.source.html" class="el_package">com.swcms.model</a> &gt; <span class="el_source">Feedback.java</span></div><h1>Feedback.java</h1><pre class="source lang-java linenums">
+package com.swcms.model;
+
+import java.time.LocalDateTime;
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+
+@Entity
+@Table(name = &quot;feedback&quot;)
+<span class="fc" id="L12">public class Feedback {</span>
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer feedbackId;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = &quot;complaint_id&quot;, nullable = false, unique = true)
+    private Complaint complaint;
+
+    @Min(1)
+    @Max(5)
+    @Column(nullable = false)
+    private Integer rating;
+
+    @Column(length = 1000)
+    private String comment;
+
+    // Photo uploaded by the citizen with feedback
+    @Column(name = &quot;photo_path&quot;, length = 500)
+    private String photoPath;
+
+    private LocalDateTime submittedAt;
+
+    @PrePersist
+    public void onCreate() {
+<span class="pc bpc" id="L38" title="1 of 2 branches missed.">        if (submittedAt == null) {</span>
+<span class="fc" id="L39">            submittedAt = LocalDateTime.now();</span>
+        }
+<span class="fc" id="L41">    }</span>
+
+    // Getters and Setters
+
+    public Integer getFeedbackId() {
+<span class="fc" id="L46">        return feedbackId;</span>
+    }
+
+    public void setFeedbackId(Integer feedbackId) {
+<span class="nc" id="L50">        this.feedbackId = feedbackId;</span>
+<span class="nc" id="L51">    }</span>
+
+    public Complaint getComplaint() {
+<span class="fc" id="L54">        return complaint;</span>
+    }
+
+    public void setComplaint(Complaint complaint) {
+<span class="fc" id="L58">        this.complaint = complaint;</span>
+<span class="fc" id="L59">    }</span>
+
+    public Integer getRating() {
+<span class="fc" id="L62">        return rating;</span>
+    }
+
+    public void setRating(Integer rating) {
+<span class="fc" id="L66">        this.rating = rating;</span>
+<span class="fc" id="L67">    }</span>
+
+    public String getComment() {
+<span class="fc" id="L70">        return comment;</span>
+    }
+
+    public void setComment(String comment) {
+<span class="fc" id="L74">        this.comment = comment;</span>
+<span class="fc" id="L75">    }</span>
+
+    public String getPhotoPath() {
+<span class="fc" id="L78">        return photoPath;</span>
+    }
+
+    public void setPhotoPath(String photoPath) {
+<span class="fc" id="L82">        this.photoPath = photoPath;</span>
+<span class="fc" id="L83">    }</span>
+
+    public LocalDateTime getSubmittedAt() {
+<span class="fc" id="L86">        return submittedAt;</span>
+    }
+
+    public void setSubmittedAt(LocalDateTime submittedAt) {
+<span class="nc" id="L90">        this.submittedAt = submittedAt;</span>
+<span class="nc" id="L91">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

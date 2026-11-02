@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JwtService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Smart Water Complaint System</a> &gt; <a href="index.source.html" class="el_package">com.swcms.security</a> &gt; <span class="el_source">JwtService.java</span></div><h1>JwtService.java</h1><pre class="source lang-java linenums">
+package com.swcms.security;
+
+import java.security.Key;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.crypto.SecretKey;
+
+import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
+
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+
+@Service
+<span class="fc" id="L20">public class JwtService {</span>
+
+    @Value(&quot;${app.jwt.secret}&quot;)
+    private String secretKey;
+
+    // Token validity: 24 hours
+    private static final long JWT_EXPIRATION = 86400000;
+
+    private Key getSigningKey() {
+<span class="fc" id="L29">        byte[] keyBytes = Decoders.BASE64.decode(secretKey);</span>
+<span class="fc" id="L30">        return Keys.hmacShaKeyFor(keyBytes);</span>
+    }
+
+    // Generate JWT token
+    public String generateToken(String email, String role) {
+
+<span class="fc" id="L36">        Map&lt;String, Object&gt; claims = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L37">        claims.put(&quot;role&quot;, role);</span>
+
+<span class="fc" id="L39">        return Jwts.builder()</span>
+<span class="fc" id="L40">                .claims(claims)</span>
+<span class="fc" id="L41">                .subject(email)</span>
+<span class="fc" id="L42">                .issuedAt(new Date())</span>
+<span class="fc" id="L43">                .expiration(new Date(System.currentTimeMillis()</span>
+<span class="fc" id="L44">                        + JWT_EXPIRATION))</span>
+<span class="fc" id="L45">                .signWith((SecretKey) getSigningKey())</span>
+<span class="fc" id="L46">                .compact();</span>
+    }
+
+    // Extract email from token
+    public String extractEmail(String token) {
+<span class="fc" id="L51">        return extractAllClaims(token).getSubject();</span>
+    }
+
+    // Extract role from token
+    public String extractRole(String token) {
+<span class="fc" id="L56">        return extractAllClaims(token).get(&quot;role&quot;, String.class);</span>
+    }
+
+    // Extract all claims
+    private Claims extractAllClaims(String token) {
+<span class="fc" id="L61">        return Jwts.parser()</span>
+<span class="fc" id="L62">                .verifyWith((SecretKey) getSigningKey())</span>
+<span class="fc" id="L63">                .build()</span>
+<span class="fc" id="L64">                .parseSignedClaims(token)</span>
+<span class="fc" id="L65">                .getPayload();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

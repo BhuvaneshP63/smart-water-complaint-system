@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>WorkerFeedbackService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Smart Water Complaint System</a> &gt; <a href="index.source.html" class="el_package">com.swcms.service</a> &gt; <span class="el_source">WorkerFeedbackService.java</span></div><h1>WorkerFeedbackService.java</h1><pre class="source lang-java linenums">
+package com.swcms.service;
+
+import java.util.List;
+
+import org.springframework.core.io.Resource;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.swcms.dto.WorkerFeedbackRequest;
+import com.swcms.dto.WorkerFeedbackResponse;
+import com.swcms.model.Complaint;
+import com.swcms.model.User;
+import com.swcms.model.WorkerFeedback;
+import com.swcms.repository.AssignmentRepository;
+import com.swcms.repository.ComplaintRepository;
+import com.swcms.repository.UserRepository;
+import com.swcms.repository.WorkerFeedbackRepository;
+
+@Service
+public class WorkerFeedbackService {
+
+    private final WorkerFeedbackRepository feedbackRepository;
+    private final ComplaintRepository complaintRepository;
+    private final AssignmentRepository assignmentRepository;
+    private final UserRepository userRepository;
+    private final FileStorageService fileStorageService;
+
+<span class="fc" id="L30">    public WorkerFeedbackService(</span>
+            WorkerFeedbackRepository feedbackRepository,
+            ComplaintRepository complaintRepository,
+            AssignmentRepository assignmentRepository,
+            UserRepository userRepository,
+            FileStorageService fileStorageService) {
+
+<span class="fc" id="L37">        this.feedbackRepository = feedbackRepository;</span>
+<span class="fc" id="L38">        this.complaintRepository = complaintRepository;</span>
+<span class="fc" id="L39">        this.assignmentRepository = assignmentRepository;</span>
+<span class="fc" id="L40">        this.userRepository = userRepository;</span>
+<span class="fc" id="L41">        this.fileStorageService = fileStorageService;</span>
+<span class="fc" id="L42">    }</span>
+
+    // 1. Worker submits feedback after resolving complaint
+    @Transactional
+    public WorkerFeedbackResponse submitFeedback(
+            Integer complaintId,
+            WorkerFeedbackRequest request,
+            String workerEmail) {
+
+<span class="fc" id="L51">        boolean assigned = assignmentRepository</span>
+<span class="fc" id="L52">                .existsByComplaintComplaintIdAndWorkerEmail(</span>
+<span class="fc" id="L53">                        complaintId, workerEmail);</span>
+
+<span class="pc bpc" id="L55" title="1 of 2 branches missed.">        if (!assigned) {</span>
+<span class="nc" id="L56">            throw new IllegalArgumentException(</span>
+<span class="nc" id="L57">                    &quot;You are not assigned to this complaint&quot;);</span>
+        }
+
+<span class="fc" id="L60">        Complaint complaint = complaintRepository.findById(complaintId)</span>
+<span class="fc" id="L61">                .orElseThrow(() -&gt;</span>
+<span class="nc" id="L62">                        new IllegalArgumentException(&quot;Complaint not found&quot;));</span>
+
+<span class="pc bpc" id="L64" title="1 of 2 branches missed.">        if (!&quot;Resolved&quot;.equals(complaint.getStatus())) {</span>
+<span class="nc" id="L65">            throw new IllegalArgumentException(</span>
+<span class="nc" id="L66">                    &quot;Feedback can only be submitted after resolving the complaint&quot;);</span>
+        }
+
+<span class="fc bfc" id="L69" title="All 2 branches covered.">        if (feedbackRepository.existsByComplaintComplaintId(complaintId)) {</span>
+<span class="fc" id="L70">            throw new IllegalArgumentException(</span>
+<span class="fc" id="L71">                    &quot;Worker feedback has already been submitted&quot;);</span>
+        }
+
+<span class="fc" id="L74">        User worker = userRepository.findByEmail(workerEmail)</span>
+<span class="fc" id="L75">                .orElseThrow(() -&gt;</span>
+<span class="nc" id="L76">                        new IllegalArgumentException(&quot;Worker not found&quot;));</span>
+
+<span class="pc bpc" id="L78" title="1 of 2 branches missed.">        if (!&quot;WORKER&quot;.equals(worker.getRole())) {</span>
+<span class="nc" id="L79">            throw new IllegalArgumentException(</span>
+<span class="nc" id="L80">                    &quot;Only workers can submit worker feedback&quot;);</span>
+        }
+
+<span class="fc" id="L83">        WorkerFeedback feedback = new WorkerFeedback();</span>
+
+<span class="fc" id="L85">        feedback.setComplaint(complaint);</span>
+<span class="fc" id="L86">        feedback.setWorker(worker);</span>
+<span class="fc" id="L87">        feedback.setRating(request.getRating());</span>
+<span class="fc" id="L88">        feedback.setComment(request.getComment());</span>
+
+<span class="fc" id="L90">        MultipartFile photo = request.getPhoto();</span>
+
+<span class="pc bpc" id="L92" title="1 of 4 branches missed.">        if (photo != null &amp;&amp; !photo.isEmpty()) {</span>
+<span class="fc" id="L93">            String photoPath = fileStorageService.storeFile(</span>
+<span class="fc" id="L94">                    photo, &quot;worker-feedback&quot;);</span>
+
+<span class="fc" id="L96">            feedback.setPhotoPath(photoPath);</span>
+        }
+
+<span class="fc" id="L99">        WorkerFeedback saved = feedbackRepository.save(feedback);</span>
+
+<span class="fc" id="L101">        return toResponse(saved);</span>
+    }
+
+    // 2. Citizen views worker feedback for their complaint
+    @Transactional(readOnly = true)
+    public WorkerFeedbackResponse getCitizenWorkerFeedback(
+            Integer complaintId, String citizenEmail) {
+
+<span class="fc" id="L109">        Complaint complaint = complaintRepository.findById(complaintId)</span>
+<span class="fc" id="L110">                .orElseThrow(() -&gt;</span>
+<span class="nc" id="L111">                        new IllegalArgumentException(&quot;Complaint not found&quot;));</span>
+
+<span class="pc bpc" id="L113" title="1 of 2 branches missed.">        if (complaint.getUser() == null ||</span>
+<span class="pc bpc" id="L114" title="1 of 2 branches missed.">                !complaint.getUser().getEmail().equals(citizenEmail)) {</span>
+
+<span class="nc" id="L116">            throw new IllegalArgumentException(</span>
+<span class="nc" id="L117">                    &quot;You cannot view another citizen's complaint feedback&quot;);</span>
+        }
+
+<span class="fc" id="L120">        WorkerFeedback feedback = feedbackRepository</span>
+<span class="fc" id="L121">                .findByComplaintComplaintId(complaintId)</span>
+<span class="fc" id="L122">                .orElseThrow(() -&gt;</span>
+<span class="nc" id="L123">                        new IllegalArgumentException(</span>
+<span class="nc" id="L124">                                &quot;Worker feedback not found&quot;));</span>
+
+<span class="fc" id="L126">        return toResponse(feedback);</span>
+    }
+
+    // 3. Citizen views worker feedback photo
+    @Transactional(readOnly = true)
+    public Resource getCitizenWorkerFeedbackPhoto(
+            Integer complaintId, String citizenEmail) {
+
+<span class="fc" id="L134">        Complaint complaint = complaintRepository.findById(complaintId)</span>
+<span class="fc" id="L135">                .orElseThrow(() -&gt;</span>
+<span class="nc" id="L136">                        new IllegalArgumentException(&quot;Complaint not found&quot;));</span>
+
+<span class="pc bpc" id="L138" title="1 of 2 branches missed.">        if (complaint.getUser() == null ||</span>
+<span class="pc bpc" id="L139" title="1 of 2 branches missed.">                !complaint.getUser().getEmail().equals(citizenEmail)) {</span>
+
+<span class="nc" id="L141">            throw new IllegalArgumentException(</span>
+<span class="nc" id="L142">                    &quot;You cannot access another citizen's complaint photo&quot;);</span>
+        }
+
+<span class="fc" id="L145">        WorkerFeedback feedback = feedbackRepository</span>
+<span class="fc" id="L146">                .findByComplaintComplaintId(complaintId)</span>
+<span class="fc" id="L147">                .orElseThrow(() -&gt;</span>
+<span class="nc" id="L148">                        new IllegalArgumentException(&quot;Worker feedback not found&quot;));</span>
+
+<span class="pc bpc" id="L150" title="1 of 2 branches missed.">        if (feedback.getPhotoPath() == null ||</span>
+<span class="pc bpc" id="L151" title="1 of 2 branches missed.">                feedback.getPhotoPath().isBlank()) {</span>
+
+<span class="nc" id="L153">            throw new IllegalArgumentException(</span>
+<span class="nc" id="L154">                    &quot;No worker feedback photo available&quot;);</span>
+        }
+
+<span class="fc" id="L157">        return fileStorageService.loadFile(feedback.getPhotoPath());</span>
+    }
+
+    // 4. Worker checks their submitted feedback
+    @Transactional(readOnly = true)
+    public WorkerFeedbackResponse getWorkerFeedback(
+            Integer complaintId, String workerEmail) {
+
+<span class="nc" id="L165">        boolean assigned = assignmentRepository</span>
+<span class="nc" id="L166">                .existsByComplaintComplaintIdAndWorkerEmail(</span>
+<span class="nc" id="L167">                        complaintId, workerEmail);</span>
+
+<span class="nc bnc" id="L169" title="All 2 branches missed.">        if (!assigned) {</span>
+<span class="nc" id="L170">            throw new IllegalArgumentException(</span>
+<span class="nc" id="L171">                    &quot;You are not assigned to this complaint&quot;);</span>
+        }
+
+<span class="nc" id="L174">        WorkerFeedback feedback = feedbackRepository</span>
+<span class="nc" id="L175">                .findByComplaintComplaintId(complaintId)</span>
+<span class="nc" id="L176">                .orElseThrow(() -&gt;</span>
+<span class="nc" id="L177">                        new IllegalArgumentException(</span>
+<span class="nc" id="L178">                                &quot;Worker feedback not submitted yet&quot;));</span>
+
+<span class="nc bnc" id="L180" title="All 2 branches missed.">        if (!feedback.getWorker().getEmail().equals(workerEmail)) {</span>
+<span class="nc" id="L181">            throw new IllegalArgumentException(</span>
+<span class="nc" id="L182">                    &quot;You cannot view another worker's feedback&quot;);</span>
+        }
+
+<span class="nc" id="L185">        return toResponse(feedback);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;WorkerFeedbackResponse&gt; getAllWorkerFeedback() {
+<span class="fc" id="L190">        return feedbackRepository.findAllByOrderBySubmittedAtDesc().stream()</span>
+<span class="fc" id="L191">                .map(this::toResponse).toList();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public Resource getFeedbackPhoto(Integer feedbackId, String email,
+            boolean isAdmin, boolean isWorker) {
+<span class="fc" id="L197">        WorkerFeedback feedback = feedbackRepository.findByFeedbackId(feedbackId)</span>
+<span class="pc" id="L198">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Worker feedback not found&quot;));</span>
+<span class="pc bpc" id="L199" title="3 of 4 branches missed.">        if (!isAdmin &amp;&amp; !(isWorker &amp;&amp; assignmentRepository</span>
+<span class="nc" id="L200">                .existsByComplaintComplaintIdAndWorkerEmail(</span>
+<span class="nc bnc" id="L201" title="All 2 branches missed.">                        feedback.getComplaint().getComplaintId(), email))) {</span>
+<span class="nc" id="L202">            throw new IllegalArgumentException(&quot;You are not authorized to view this photo&quot;);</span>
+        }
+<span class="pc bpc" id="L204" title="2 of 4 branches missed.">        if (feedback.getPhotoPath() == null || feedback.getPhotoPath().isBlank()) {</span>
+<span class="nc" id="L205">            throw new IllegalArgumentException(&quot;No worker feedback photo available&quot;);</span>
+        }
+<span class="fc" id="L207">        return fileStorageService.loadFile(feedback.getPhotoPath());</span>
+    }
+
+    // 5. Convert entity into response DTO
+    private WorkerFeedbackResponse toResponse(
+            WorkerFeedback feedback) {
+
+<span class="fc" id="L214">        return new WorkerFeedbackResponse(</span>
+<span class="fc" id="L215">                feedback.getFeedbackId(),</span>
+<span class="fc" id="L216">                feedback.getComplaint().getComplaintId(),</span>
+<span class="fc" id="L217">                feedback.getWorker().getName(),</span>
+<span class="fc" id="L218">                feedback.getRating(),</span>
+<span class="fc" id="L219">                feedback.getComment(),</span>
+<span class="fc" id="L220">                feedback.getPhotoPath(),</span>
+<span class="fc" id="L221">                feedback.getSubmittedAt()</span>
+        );
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

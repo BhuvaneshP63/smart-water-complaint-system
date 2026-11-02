@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ProfileController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Smart Water Complaint System</a> &gt; <a href="index.source.html" class="el_package">com.swcms.controller</a> &gt; <span class="el_source">ProfileController.java</span></div><h1>ProfileController.java</h1><pre class="source lang-java linenums">package com.swcms.controller;
+
+import java.util.List;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
+import com.swcms.dto.*;
+import com.swcms.model.*;
+import com.swcms.repository.*;
+import com.swcms.security.JwtService;
+
+@RestController
+@RequestMapping(&quot;/api&quot;)
+public class ProfileController {
+    private final UserRepository users;
+    private final ComplaintRepository complaints;
+    private final ComplaintStatusHistoryRepository history;
+    private final PasswordEncoder encoder;
+    private final JwtService jwt;
+
+<span class="fc" id="L22">    public ProfileController(UserRepository users, ComplaintRepository complaints,</span>
+            ComplaintStatusHistoryRepository history, PasswordEncoder encoder, JwtService jwt) {
+<span class="fc" id="L24">        this.users = users; this.complaints = complaints; this.history = history; this.encoder = encoder; this.jwt=jwt;</span>
+<span class="fc" id="L25">    }</span>
+
+    @GetMapping({&quot;/user/profile&quot;, &quot;/worker/profile&quot;})
+<span class="fc" id="L28">    public UserProfileResponse getProfile(Authentication auth) { return profile(auth.getName()); }</span>
+
+    @PutMapping({&quot;/user/profile&quot;, &quot;/worker/profile&quot;})
+    public java.util.Map&lt;String,Object&gt; updateProfile(@Valid @RequestBody ProfileUpdateRequest request, Authentication auth) {
+<span class="fc" id="L32">        User user = current(auth);</span>
+<span class="pc bpc" id="L33" title="1 of 4 branches missed.">        if (!user.getEmail().equalsIgnoreCase(request.getEmail()) &amp;&amp; users.existsByEmail(request.getEmail()))</span>
+<span class="nc" id="L34">            throw new IllegalArgumentException(&quot;Email is already registered&quot;);</span>
+<span class="fc" id="L35">        user.setName(request.getName().trim()); user.setEmail(request.getEmail().trim().toLowerCase());</span>
+<span class="fc" id="L36">        User saved=users.save(user);</span>
+<span class="fc" id="L37">        return java.util.Map.of(&quot;profile&quot;, new UserProfileResponse(saved.getUserId(), saved.getName(), saved.getEmail(), saved.getRole()),</span>
+<span class="fc" id="L38">                &quot;token&quot;, jwt.generateToken(saved.getEmail(), saved.getRole()));</span>
+    }
+
+    @PutMapping({&quot;/user/password&quot;, &quot;/worker/password&quot;})
+    public java.util.Map&lt;String, String&gt; changePassword(@Valid @RequestBody PasswordChangeRequest request, Authentication auth) {
+<span class="fc" id="L43">        User user = current(auth);</span>
+<span class="pc bpc" id="L44" title="1 of 2 branches missed.">        if (!encoder.matches(request.getCurrentPassword(), user.getPassword()))</span>
+<span class="nc" id="L45">            throw new IllegalArgumentException(&quot;Current password is incorrect&quot;);</span>
+<span class="fc" id="L46">        user.setPassword(encoder.encode(request.getNewPassword())); users.save(user);</span>
+<span class="fc" id="L47">        return java.util.Map.of(&quot;message&quot;, &quot;Password changed successfully&quot;);</span>
+    }
+
+    @PostMapping({&quot;/user/refresh-token&quot;, &quot;/worker/refresh-token&quot;})
+    public java.util.Map&lt;String,String&gt; refreshToken(Authentication auth) {
+<span class="nc" id="L52">        User user=current(auth);</span>
+<span class="nc" id="L53">        return java.util.Map.of(&quot;token&quot;, jwt.generateToken(user.getEmail(), user.getRole()));</span>
+    }
+
+    @GetMapping(&quot;/user/notifications&quot;)
+    public List&lt;ComplaintStatusHistoryResponse&gt; citizenNotifications(Authentication auth) {
+<span class="fc" id="L58">        return complaints.findByUserEmail(auth.getName()).stream()</span>
+<span class="fc" id="L59">                .flatMap(c -&gt; history.findByComplaintComplaintIdOrderByUpdatedAtAsc(c.getComplaintId()).stream()</span>
+<span class="fc" id="L60">                .map(h -&gt; new ComplaintStatusHistoryResponse(h.getHistoryId(), c.getComplaintId(),</span>
+<span class="fc" id="L61">                        h.getOldStatus(), h.getNewStatus(), h.getUpdatedBy(), h.getRemarks(), h.getUpdatedAt()))</span>
+                )
+<span class="fc" id="L63">                .sorted((a,b) -&gt; b.getUpdatedAt().compareTo(a.getUpdatedAt())).limit(25).toList();</span>
+    }
+
+<span class="pc" id="L66">    private User current(Authentication auth) { return users.findByEmail(auth.getName()).orElseThrow(() -&gt; new IllegalArgumentException(&quot;Account not found&quot;)); }</span>
+<span class="pc" id="L67">    private UserProfileResponse profile(String email) { User u = users.findByEmail(email).orElseThrow(() -&gt; new IllegalArgumentException(&quot;Account not found&quot;)); return new UserProfileResponse(u.getUserId(), u.getName(), u.getEmail(), u.getRole()); }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

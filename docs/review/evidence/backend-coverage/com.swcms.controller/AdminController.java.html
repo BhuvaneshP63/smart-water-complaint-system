@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AdminController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Smart Water Complaint System</a> &gt; <a href="index.source.html" class="el_package">com.swcms.controller</a> &gt; <span class="el_source">AdminController.java</span></div><h1>AdminController.java</h1><pre class="source lang-java linenums">package com.swcms.controller;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
+import com.swcms.dto.*;
+import com.swcms.model.*;
+import com.swcms.repository.*;
+import com.swcms.service.ComplaintService;
+
+@RestController
+@RequestMapping(&quot;/api/admin&quot;)
+public class AdminController {
+    private final UserRepository users;
+    private final AssignmentRepository assignments;
+    private final ComplaintRepository complaints;
+    private final FeedbackRepository citizenFeedback;
+    private final ComplaintService complaintService;
+    private final ComplaintStatusHistoryRepository histories;
+
+<span class="fc" id="L25">    public AdminController(UserRepository users, AssignmentRepository assignments,</span>
+            ComplaintRepository complaints,
+            FeedbackRepository citizenFeedback, ComplaintService complaintService,
+            ComplaintStatusHistoryRepository histories) {
+<span class="fc" id="L29">        this.users=users; this.assignments=assignments; this.complaints=complaints;</span>
+<span class="fc" id="L30">        this.citizenFeedback=citizenFeedback; this.complaintService=complaintService; this.histories=histories;</span>
+<span class="fc" id="L31">    }</span>
+
+    @GetMapping(&quot;/test&quot;)
+<span class="nc" id="L34">    public String adminTest(Authentication authentication) { return &quot;Welcome ADMIN: &quot; + authentication.getName(); }</span>
+
+    @GetMapping(&quot;/workers&quot;)
+    @Transactional(readOnly=true)
+    public List&lt;WorkerManagementResponse&gt; workers() {
+<span class="fc" id="L39">        return users.findByRole(&quot;WORKER&quot;).stream().map(worker -&gt; {</span>
+<span class="fc" id="L40">            List&lt;Assignment&gt; workerAssignments = assignments.findByWorkerUserId(worker.getUserId());</span>
+<span class="pc bpc" id="L41" title="1 of 2 branches missed.">            int activeCount = (int) workerAssignments.stream().filter(a -&gt; !List.of(&quot;Resolved&quot;,&quot;Cancelled&quot;,&quot;Rejected&quot;).contains(a.getComplaint().getStatus())).count();</span>
+<span class="fc" id="L42">            int resolved = (int) workerAssignments.stream().filter(a -&gt; &quot;Resolved&quot;.equals(a.getComplaint().getStatus())).count();</span>
+<span class="fc" id="L43">            var complaintIds = workerAssignments.stream().map(a -&gt; a.getComplaint().getComplaintId()).collect(java.util.stream.Collectors.toSet());</span>
+<span class="fc" id="L44">            var ratings = citizenFeedback.findAllWithComplaintAndUser().stream()</span>
+<span class="fc" id="L45">                    .filter(f -&gt; complaintIds.contains(f.getComplaint().getComplaintId())).mapToInt(com.swcms.model.Feedback::getRating).toArray();</span>
+<span class="fc bfc" id="L46" title="All 2 branches covered.">            double average = ratings.length == 0 ? 0 : java.util.Arrays.stream(ratings).average().orElse(0);</span>
+<span class="fc" id="L47">            return new WorkerManagementResponse(worker.getUserId(), worker.getName(), worker.getEmail(), worker.isActive(), activeCount, resolved, average);</span>
+<span class="fc" id="L48">        }).toList();</span>
+    }
+
+    @PutMapping(&quot;/workers/{id}&quot;)
+    @Transactional
+    public WorkerManagementResponse updateWorker(@PathVariable Integer id, @Valid @RequestBody WorkerUpdateRequest request) {
+<span class="fc" id="L54">        User worker = users.findById(id).filter(u -&gt; &quot;WORKER&quot;.equals(u.getRole()))</span>
+<span class="pc" id="L55">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Worker not found&quot;));</span>
+<span class="pc bpc" id="L56" title="3 of 4 branches missed.">        if (!worker.getEmail().equalsIgnoreCase(request.getEmail()) &amp;&amp; users.existsByEmail(request.getEmail()))</span>
+<span class="nc" id="L57">            throw new IllegalArgumentException(&quot;Email is already registered&quot;);</span>
+<span class="fc" id="L58">        worker.setName(request.getName().trim()); worker.setEmail(request.getEmail().trim().toLowerCase());</span>
+<span class="pc bpc" id="L59" title="1 of 2 branches missed.">        if (request.getActive() != null) worker.setActive(request.getActive());</span>
+<span class="fc" id="L60">        users.save(worker);</span>
+<span class="fc" id="L61">        List&lt;Assignment&gt; assignmentsForWorker = assignments.findByWorkerUserId(id);</span>
+<span class="pc bpc" id="L62" title="1 of 2 branches missed.">        int activeCount=(int)assignmentsForWorker.stream().filter(a -&gt; !List.of(&quot;Resolved&quot;,&quot;Cancelled&quot;,&quot;Rejected&quot;).contains(a.getComplaint().getStatus())).count();</span>
+<span class="fc" id="L63">        int resolved=(int)assignmentsForWorker.stream().filter(a -&gt; &quot;Resolved&quot;.equals(a.getComplaint().getStatus())).count();</span>
+<span class="fc" id="L64">        var complaintIds=assignmentsForWorker.stream().map(a -&gt; a.getComplaint().getComplaintId()).collect(java.util.stream.Collectors.toSet());</span>
+<span class="fc" id="L65">        double avg=citizenFeedback.findAllWithComplaintAndUser().stream().filter(f -&gt; complaintIds.contains(f.getComplaint().getComplaintId())).mapToInt(com.swcms.model.Feedback::getRating).average().orElse(0);</span>
+<span class="fc" id="L66">        return new WorkerManagementResponse(id,worker.getName(),worker.getEmail(),worker.isActive(),activeCount,resolved,avg);</span>
+    }
+
+    @GetMapping(&quot;/workers/{id}/complaints&quot;)
+    @Transactional(readOnly=true)
+    public List&lt;Map&lt;String,Object&gt;&gt; workerComplaints(@PathVariable Integer id) {
+<span class="nc" id="L72">        return assignments.findByWorkerUserId(id).stream().map(a -&gt; {</span>
+<span class="nc" id="L73">            Complaint c=a.getComplaint(); Map&lt;String,Object&gt; item=new java.util.HashMap&lt;&gt;();</span>
+<span class="nc" id="L74">            item.put(&quot;complaintId&quot;,c.getComplaintId()); item.put(&quot;customerName&quot;,c.getCustomerName());</span>
+<span class="nc" id="L75">            item.put(&quot;complaintType&quot;,c.getComplaintType()); item.put(&quot;status&quot;,c.getStatus());</span>
+<span class="nc" id="L76">            item.put(&quot;priority&quot;,c.getPriority()); item.put(&quot;assignedAt&quot;,a.getAssignedAt()); return item;</span>
+<span class="nc" id="L77">        }).toList();</span>
+    }
+
+    @GetMapping(&quot;/complaints/overdue&quot;)
+    public List&lt;Complaint&gt; overdueComplaints() {
+<span class="fc" id="L82">        LocalDateTime cutoff=LocalDateTime.now().minusDays(7);</span>
+<span class="pc bpc" id="L83" title="1 of 4 branches missed.">        return complaints.findAllByOrderByComplaintIdDesc().stream().filter(c -&gt; c.getCreatedAt()!=null &amp;&amp; c.getCreatedAt().isBefore(cutoff)</span>
+<span class="pc bpc" id="L84" title="1 of 2 branches missed.">                &amp;&amp; !List.of(&quot;Resolved&quot;,&quot;Cancelled&quot;,&quot;Rejected&quot;).contains(c.getStatus())).toList();</span>
+    }
+
+    @PostMapping(&quot;/complaints/escalate-overdue&quot;)
+<span class="fc" id="L88">    public Map&lt;String,Integer&gt; escalateOverdue() { return Map.of(&quot;escalated&quot;, complaintService.escalateOverdue()); }</span>
+
+    @GetMapping(&quot;/activity&quot;)
+    @Transactional(readOnly=true)
+    public List&lt;ComplaintStatusHistoryResponse&gt; recentActivity() {
+<span class="nc" id="L93">        return histories.findTop20ByOrderByUpdatedAtDesc().stream().map(h -&gt; new ComplaintStatusHistoryResponse(</span>
+<span class="nc" id="L94">                h.getHistoryId(), h.getComplaint().getComplaintId(), h.getOldStatus(), h.getNewStatus(),</span>
+<span class="nc" id="L95">                h.getUpdatedBy(), h.getRemarks(), h.getUpdatedAt())).toList();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>
