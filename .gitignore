@@ -1,0 +1,19 @@
+# Build output
+/target/
+/swcms-frontend/node_modules/
+/swcms-frontend/dist/
+
+# Local databases and uploaded citizen/work proof images
+/data/
+/uploads/
+*.mv.db
+*.trace.db
+
+# Local secrets and editor/OS files
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+*.log
+
