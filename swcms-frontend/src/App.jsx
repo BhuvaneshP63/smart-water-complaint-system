@@ -2,11 +2,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import API from './api'
 import './App.css'
+import './Linear.css'
 import ComplaintPhoto from './components/ComplaintPhoto'
 import WorkerCompletionForm from './components/WorkerCompletionForm'
 import FeedbackPhoto from './components/FeedbackPhoto'
-import WorkerFeedbackForm from './components/WorkerFeedbackForm'
-import WorkerFeedbackDisplay from './components/WorkerFeedbackDisplay'
 import CompletionPhoto from './components/CompletionPhoto'
 import Pagination from './components/Pagination'
 
@@ -541,10 +540,19 @@ const fetchWorkerCitizenFeedback = async () => {
       formData.append('photo', feedbackPhotos[complaintId])
     }
 
-    await API.post(
+    const response = await API.post(
       `/user/complaints/${complaintId}/feedback`,
       formData
     )
+
+    // Mark this complaint as submitted from the successful POST response so
+    // a failed follow-up refresh can never leave the form available to retry.
+    if (response.data) {
+      setFeedbacks(previous => [
+        ...previous.filter(item => Number(item.complaintId) !== Number(complaintId)),
+        response.data
+      ])
+    }
 
     setFeedbackPhotos(previous => ({
       ...previous,
@@ -557,8 +565,11 @@ const fetchWorkerCitizenFeedback = async () => {
       return updated
     })
 
-    await fetchFeedback()
     showMessage('Feedback submitted successfully!')
+
+    // Refresh the history independently. A refresh failure must not report the
+    // already-completed submission as failed or restore its form.
+    fetchFeedback()
   } catch (err) {
     console.error('Feedback submission error:', err)
     showError(getErrorMessage(err, 'Unable to submit feedback.'))
@@ -1634,10 +1645,7 @@ const handleSubmit = async event => {
 {isWorker && (
   <td>
     {complaint.status === 'Resolved' ? (
-      <WorkerFeedbackForm
-        complaint={complaint}
-        onSuccess={async () => { await fetchComplaints(); await fetchWorkerStats() }}
-      />
+      <WorkerCompletionForm complaint={complaint} />
     ) : ['Cancelled','Rejected'].includes(complaint.status) ? (
       <span className={getStatusClass(complaint.status)}>{complaint.status}</span>
     ) : (
@@ -2072,8 +2080,9 @@ const handleSubmit = async event => {
     <h3>Submit Feedback</h3>
 
     <p>
-      You can submit feedback after your complaint has been resolved.
-      Only one feedback submission is allowed per complaint.
+      You can submit feedback after a complaint is resolved. Each complaint
+      has its own one-time feedback submission, so a form still shown below
+      belongs to a different resolved complaint.
     </p>
 
     {loading ? (
@@ -2116,7 +2125,10 @@ const handleSubmit = async event => {
                   </p>
 
                   {alreadySubmitted ? (
-                    <p><strong>Feedback already submitted.</strong></p>
+                    <p className="feedback-submitted-state" role="status">
+                      <strong>Feedback submitted for this complaint.</strong>
+                      {' '}Your rating, comment and photo are in My Submitted Feedback below.
+                    </p>
                   ) : (
                     <form
                       onSubmit={event =>
@@ -2320,9 +2332,6 @@ const handleSubmit = async event => {
                 {selectedComplaint.status || 'Pending'}
               </span>
             </div>
-            {isCitizen && selectedComplaint.status === 'Resolved' && (
-              <WorkerFeedbackDisplay complaintId={selectedComplaint.complaintId} />
-            )}
             <hr />
 
 <h3>Complaint Status History</h3>

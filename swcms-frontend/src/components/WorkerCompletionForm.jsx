@@ -50,7 +50,12 @@ function WorkerCompletionForm({ complaint, onSuccess }) {
   }
 
   if (complaint.status === 'Resolved') {
-    return <span className="worker-resolved">Resolved</span>
+    return (
+      <div className="worker-resolved" role="status" title="Completion photo and remarks have been shared with the citizen.">
+        <span className="worker-resolved-icon" aria-hidden="true">✓</span>
+        <span>Completion shared</span>
+      </div>
+    )
   }
 
   return (

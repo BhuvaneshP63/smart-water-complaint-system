@@ -1,21 +1,26 @@
-# Build output
-/target/
-/swcms-frontend/node_modules/
-/swcms-frontend/dist/
-/swcms-frontend/playwright-report/
-/swcms-frontend/test-results/
-
-# Local databases and uploaded citizen/work proof images
-/data/
-/uploads/
-*.mv.db
-*.trace.db
-
-# Local secrets and editor/OS files
+# Frontend
+swcms-frontend/node_modules/
+swcms-frontend/dist/
+swcms-frontend/.env
+# Backend
+target/
+*.log
+# Environment and secrets
 .env
-.env.*
-!.env.example
+application-local.properties
+# IDE
+.settings/
+.classpath
+.project
+.vscode/
+# OS
 .DS_Store
 Thumbs.db
-*.log
-
+# Playwright generated files
+swcms-frontend/playwright-report/
+swcms-frontend/test-results/
+# Build files
+swcms-frontend/node_modules/
+swcms-frontend/dist/
+target/
+**/.env

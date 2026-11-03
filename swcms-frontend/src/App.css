@@ -1393,14 +1393,19 @@ body,
 }
 
 .worker-resolved {
-  display: inline-block;
-  padding: 6px 12px;
-  border-radius: 20px;
-  background: #dcfce7;
-  color: #166534;
-  font-size: 12px;
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: max-content;
+  padding: 7px 10px;
+  border: 1px solid #345241;
+  border-radius: 8px;
+  background: #202b24;
+  color: #a8d9b5;
+  font-size: 11px;
+  font-weight: 600;
 }
+.worker-resolved-icon { display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: #2e4938; color: #b8ebc6; font-size: 10px; }
 /* =========================================
    WORKER COMPLETION FORM - LAYOUT FIX
 ========================================= */
